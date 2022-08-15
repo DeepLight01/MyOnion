@@ -9,7 +9,9 @@
 #include "utils/log.h"
 #include "system/battery.h"
 #include "system/settings.h"
-#include "theme/theme.h"
+#include "theme/config.h"
+#include "theme/resources.h"
+#include "theme/render/battery.h"
 
 int main(int argc, char *argv[])
 {
@@ -41,16 +43,11 @@ int main(int argc, char *argv[])
     }
 
     SDL_BlitSurface(background, NULL, screen, NULL);
-    SDL_BlitSurface(screen, NULL, video, NULL);
-    SDL_Flip(video);
-    SDL_BlitSurface(screen, NULL, video, NULL);
-    SDL_Flip(video);
 
     TTF_Init();
 
-    Theme_s theme = theme_loadFromPath(theme_path);
-    TTF_Font* font = theme_loadFont(theme_path, theme.hint.font, theme.hint.size);
-    SDL_Color color = theme.total.color;
+    TTF_Font* font = theme_loadFont(theme_path, theme()->hint.font, theme()->hint.size);
+    SDL_Color color = theme()->total.color;
 
     char version_str[12];
     sprintf(version_str, "v%s", file_read("/mnt/SDCARD/.tmp_update/onionVersion/version.txt"));
@@ -59,23 +56,12 @@ int main(int argc, char *argv[])
     SDL_Rect rectVersion = {20, 450 - version->h / 2};
     SDL_BlitSurface(version, NULL, screen, &rectVersion);
 
-    if (bShowBat == 1 && exists("/tmp/percBat")) {
-        ThemeImages res_requests[RES_MAX_REQUESTS] = {
-            TR_BATTERY_0,
-            TR_BATTERY_20,
-            TR_BATTERY_50,
-            TR_BATTERY_80,
-            TR_BATTERY_100,
-            TR_BATTERY_CHARGING
-        };
-        Resources_s res = theme_loadResources(&theme, res_requests);
-
-        SDL_Surface* battery = theme_batterySurface(&theme, &res, battery_getPercentage());
-        SDL_Rect battery_rect = {596 - battery->w / 2, 450 - battery->h / 2};
+    if (bShowBat == 1) {
+        SDL_Surface* battery = theme_batterySurface(battery_getPercentage());
+        SDL_Rect battery_rect = {596 - battery->w / 2, 30 - battery->h / 2};
         SDL_BlitSurface(battery, NULL, screen, &battery_rect);
         SDL_FreeSurface(battery);
-
-        theme_freeResources(&res);
+        resources_free();
     }
 
     // Blit twice, to clear the video buffer
@@ -87,11 +73,16 @@ int main(int argc, char *argv[])
     if (argc > 1 && strcmp(argv[1], "Boot") != 0)
         temp_flag_set(".offOrder", false);
 
+    #ifndef PLATFORM_MIYOOMINI
+    sleep(4); // for debugging purposes
+    #endif
+
     SDL_FreeSurface(background);
     SDL_FreeSurface(version);
     SDL_FreeSurface(screen);
     SDL_FreeSurface(video);
     SDL_Quit();
+
 
     return EXIT_SUCCESS;
 }
